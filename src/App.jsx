@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 
 const WS_URL =
@@ -6,11 +6,11 @@ const WS_URL =
   `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws`;
 
 const EVENT_LABELS = {
-  pull_request: "Pull request",
-  pull_request_review: "Review",
-  pull_request_review_comment: "Review comment",
-  pull_request_review_thread: "Review thread",
-  issue_comment: "PR comment",
+  pull_request: "pull request",
+  pull_request_review: "review",
+  pull_request_review_comment: "review comment",
+  pull_request_review_thread: "review thread",
+  issue_comment: "pr comment",
 };
 
 function kindClass(kind) {
@@ -62,11 +62,11 @@ function EventCard({ event }) {
       {event.summary ? (
         <div className="insight">
           <p>
-            <strong>Summary</strong>
+            <span>Model summary</span>
             {event.summary}
           </p>
           <p>
-            <strong>Suggestion</strong>
+            <span>Next action</span>
             {event.suggestion}
           </p>
         </div>
@@ -84,6 +84,10 @@ function EventCard({ event }) {
 export default function App() {
   const [events, setEvents] = useState([]);
   const [status, setStatus] = useState("connecting");
+  const prCount = useMemo(
+    () => new Set(events.filter((event) => event.event_type === "pull_request").map((event) => event.number)).size,
+    [events]
+  );
 
   useEffect(() => {
     let socket;
@@ -134,11 +138,14 @@ export default function App() {
   }, []);
 
   return (
-    <div className="page">
-      <header className="topbar">
-        <div>
-          <p className="kicker">Live webhook feed</p>
-          <h1>GitHub PR Monitor</h1>
+    <div className="shell">
+      <header className="nav">
+        <div className="brand">
+          <div className="mark">PR</div>
+          <div className="brand-copy">
+            <strong>PR Monitor</strong>
+            <span>Lab console</span>
+          </div>
         </div>
         <div className={`live ${status}`}>
           <span className="dot" />
@@ -146,24 +153,50 @@ export default function App() {
         </div>
       </header>
 
-      <p className="lede">
-        Newest GitHub pull request activity appears at the top, with a short Groq read on what it is
-        and what to do next.
-      </p>
+      <section className="hero">
+        <p className="kicker">Realtime GitHub instrument</p>
+        <h1>Watch pull requests as they move.</h1>
+        <p className="lede">
+          Webhooks land on Render, Groq classifies the change, and this console updates over a
+          WebSocket. Newest activity stays at the top.
+        </p>
+        <dl className="stats">
+          <div className="stat">
+            <dt>Events</dt>
+            <dd>{events.length}</dd>
+          </div>
+          <div className="stat">
+            <dt>Pull requests</dt>
+            <dd>{prCount}</dd>
+          </div>
+          <div className="stat">
+            <dt>Channel</dt>
+            <dd>{status === "connected" ? "live" : "idle"}</dd>
+          </div>
+        </dl>
+      </section>
 
       {events.length === 0 ? (
         <section className="empty">
-          <p className="empty-title">Waiting for events</p>
-          <p>Open, review, or comment on a pull request. This list updates as soon as GitHub posts the webhook.</p>
+          <p className="empty-kicker">Stream</p>
+          <h2>Waiting for a GitHub signal</h2>
+          <p>Open a pull request or add a comment. This view updates as soon as the webhook arrives.</p>
         </section>
       ) : (
-        <section className="feed">
-          <p className="count">{events.length} event{events.length === 1 ? "" : "s"}</p>
-          {events.map((event, index) => (
-            <EventCard key={`${event.url}-${event.action}-${index}`} event={event} />
-          ))}
+        <section>
+          <div className="feed-head">
+            <h2>Activity</h2>
+            <p className="kicker">{events.length} records</p>
+          </div>
+          <div className="feed">
+            {events.map((event, index) => (
+              <EventCard key={`${event.url}-${event.action}-${index}`} event={event} />
+            ))}
+          </div>
         </section>
       )}
+
+      <p className="foot">Render webhook · Groq classify · Vercel console</p>
     </div>
   );
 }
